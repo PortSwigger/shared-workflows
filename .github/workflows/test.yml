@@ -1,0 +1,412 @@
+name: Test sanitizer action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-bambda-valid:
+    name: "bambda: valid issue inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Add filter for HTTP status codes"
+          author: testuser123
+          url: "https://github.com/PortSwigger/bambdas/issues/42"
+      - name: Assert outputs
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          AUTHOR: ${{ steps.sanitize.outputs.author }}
+          URL: ${{ steps.sanitize.outputs.url }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$TITLE" = "Add filter for HTTP status codes"
+          test "$AUTHOR" = "testuser123"
+          test "$URL" = "https://github.com/PortSwigger/bambdas/issues/42"
+          test "$ERROR" = ""
+
+  test-bambda-valid-pr:
+    name: "bambda: valid PR inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Fix response filter"
+          author: contributor42
+          url: "https://github.com/PortSwigger/bambdas/pull/7"
+      - name: Assert outputs
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          URL: ${{ steps.sanitize.outputs.url }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$TITLE" = "Fix response filter"
+          test "$URL" = "https://github.com/PortSwigger/bambdas/pull/7"
+          test "$ERROR" = ""
+
+  test-bcheck-valid:
+    name: "bcheck: valid issue inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bcheck
+          title: "Add XSS detection check"
+          author: securityresearcher
+          url: "https://github.com/PortSwigger/BChecks/issues/15"
+      - name: Assert outputs
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$TITLE" = "Add XSS detection check"
+          test "$ERROR" = ""
+
+  test-extension-submission-valid:
+    name: "extension-submission: valid inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Cool Extension"
+          author: "ExtensionDev"
+          url: "https://github.com/ExtensionDev/my-cool-extension"
+          version_number: "1.2.3"
+          product_compatibility: '["Community","DAST"]'
+      - name: Assert outputs
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          AUTHOR: ${{ steps.sanitize.outputs.author }}
+          URL: ${{ steps.sanitize.outputs.url }}
+          VERSION: ${{ steps.sanitize.outputs.version_number }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$TITLE" = "My Cool Extension"
+          test "$AUTHOR" = "ExtensionDev"
+          test "$URL" = "https://github.com/ExtensionDev/my-cool-extension"
+          test "$VERSION" = "1.2.3"
+          test "$ERROR" = ""
+
+  test-extension-update-valid:
+    name: "extension-update: valid inputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-update
+          title: "Update My Extension"
+          url: "https://github.com/PortSwigger/my-extension/pull/5"
+          version_number: "2.0.0"
+      - name: Assert outputs
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          URL: ${{ steps.sanitize.outputs.url }}
+          VERSION: ${{ steps.sanitize.outputs.version_number }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$TITLE" = "Update My Extension"
+          test "$URL" = "https://github.com/PortSwigger/my-extension/pull/5"
+          test "$VERSION" = "2.0.0"
+          test "$ERROR" = ""
+
+  test-extension-update-author-optional:
+    name: "extension-update: author is optional"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-update
+          title: "Update My Extension"
+          url: "https://github.com/PortSwigger/my-extension/pull/5"
+          version_number: "2.0.0"
+      - name: Assert no error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" = ""
+
+  test-malicious-title:
+    name: "Malicious title is sanitized"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: 'Test <script>alert("xss")</script> `$(whoami)`'
+          author: testuser
+          url: "https://github.com/owner/repo/issues/1"
+      - name: Assert dangerous chars stripped
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          # Should not contain < > " ' `
+          if echo "$TITLE" | grep -q '[<>"`'"'"']'; then
+            echo "FAIL: title still contains dangerous characters: $TITLE"
+            exit 1
+          fi
+          test "$ERROR" = ""
+
+  test-newline-injection:
+    name: "Newlines in title are replaced with spaces"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Line1\nLine2\rLine3\tTabbed"
+          author: testuser
+          url: "https://github.com/owner/repo/issues/1"
+      - name: Assert no newlines or tabs in output
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if echo "$TITLE" | grep -Pq '[\r\n\t]'; then
+            echo "FAIL: title still contains newlines or tabs: $TITLE"
+            exit 1
+          fi
+          test "$ERROR" = ""
+
+  test-max-length-title:
+    name: "Title exceeding 200 chars is truncated"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          author: testuser
+          url: "https://github.com/owner/repo/issues/1"
+      - name: Assert title is truncated to 200 chars
+        env:
+          TITLE: ${{ steps.sanitize.outputs.title }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          len=${#TITLE}
+          if [ "$len" -gt 200 ]; then
+            echo "FAIL: title length is $len, expected <= 200"
+            exit 1
+          fi
+          test "$ERROR" = ""
+
+  test-invalid-url-bambda:
+    name: "bambda: rejects non-GitHub URL"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Test"
+          author: testuser
+          url: "https://evil.com/exfil?data=secret"
+      - name: Assert error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" != ""
+
+  test-invalid-url-extension:
+    name: "extension-submission: rejects non-repo URL"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/owner/repo/issues/1"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+      - name: Assert error - issues URL not valid for extension-submission
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" != ""
+
+  test-missing-required-fields-bambda:
+    name: "bambda: missing author produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Test"
+          url: "https://github.com/owner/repo/issues/1"
+      - name: Assert error mentions missing author
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -qi "author"; then
+            echo "FAIL: error_message should mention missing author: $ERROR"
+            exit 1
+          fi
+
+  test-missing-required-fields-extension:
+    name: "extension-submission: missing version produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          product_compatibility: '["Community"]'
+      - name: Assert error mentions missing version
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -qi "version"; then
+            echo "FAIL: error_message should mention missing version_number: $ERROR"
+            exit 1
+          fi
+
+  test-invalid-version:
+    name: "extension-submission: invalid version format"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0; rm -rf /"
+          product_compatibility: '["Community"]'
+      - name: Assert error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" != ""
+
+  test-invalid-product-compatibility:
+    name: "extension-submission: invalid product compatibility"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0.0"
+          product_compatibility: '["Community","InvalidProduct"]'
+      - name: Assert error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" != ""
+
+  test-invalid-type:
+    name: "Invalid type produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: invalid-type
+          title: "Test"
+      - name: Assert error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" != ""
+
+  test-url-trailing-slash:
+    name: "URL with trailing slash accepted"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension/"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+      - name: Assert accepted
+        env:
+          URL: ${{ steps.sanitize.outputs.url }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$URL" = "https://github.com/dev/my-extension/"
+          test "$ERROR" = ""
+
+  test-non-applicable-fields-ignored:
+    name: "bambda: version_number is ignored"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./
+        with:
+          type: bambda
+          title: "Test"
+          author: testuser
+          url: "https://github.com/owner/repo/issues/1"
+          version_number: "1.0.0"
+      - name: Assert version_number is empty (not applicable)
+        env:
+          VERSION: ${{ steps.sanitize.outputs.version_number }}
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$VERSION" = ""
+          test "$ERROR" = ""
