@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Add filter for HTTP status codes"
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Fix response filter"
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bcheck
           title: "Add XSS detection check"
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Cool Extension"
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-update
           title: "Update My Extension"
@@ -137,7 +137,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-update
           title: "Update My Extension"
@@ -156,7 +156,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: 'Test <script>alert("xss")</script> `$(whoami)`'
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Line1\nLine2\rLine3\tTabbed"
@@ -205,7 +205,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -230,7 +230,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Test"
@@ -249,7 +249,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Extension"
@@ -270,7 +270,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Test"
@@ -291,7 +291,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Extension"
@@ -314,7 +314,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Extension"
@@ -335,7 +335,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Extension"
@@ -356,7 +356,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: invalid-type
           title: "Test"
@@ -373,7 +373,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: extension-submission
           title: "My Extension"
@@ -396,7 +396,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run sanitizer
         id: sanitize
-        uses: ./
+        uses: ./sanitize-inputs
         with:
           type: bambda
           title: "Test"
