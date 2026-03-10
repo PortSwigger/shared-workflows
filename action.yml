@@ -1,0 +1,205 @@
+name: 'Extensibility Submission Input Sanitizer'
+description: 'Sanitizes user-controlled inputs (title, author, URL) to prevent command injection in PortSwigger extensibility workflows'
+
+inputs:
+  type:
+    description: 'Submission type: extension-submission, extension-update, bcheck, or bambda'
+    required: true
+  title:
+    description: 'Submission title (issue or PR title)'
+    required: true
+  author:
+    description: 'Author identifier (GitHub login or display name)'
+    required: false
+    default: ''
+  url:
+    description: 'URL to validate'
+    required: false
+    default: ''
+  version_number:
+    description: 'Version string (extension types only)'
+    required: false
+    default: ''
+  product_compatibility:
+    description: 'JSON array of product labels (extension-submission only)'
+    required: false
+    default: ''
+
+outputs:
+  title:
+    description: 'Sanitized title'
+    value: ${{ steps.sanitize.outputs.title }}
+  author:
+    description: 'Sanitized author'
+    value: ${{ steps.sanitize.outputs.author }}
+  url:
+    description: 'Sanitized and validated URL'
+    value: ${{ steps.sanitize.outputs.url }}
+  version_number:
+    description: 'Validated version string'
+    value: ${{ steps.sanitize.outputs.version_number }}
+  product_compatibility:
+    description: 'Validated JSON array of product labels'
+    value: ${{ steps.sanitize.outputs.product_compatibility }}
+  error_message:
+    description: 'Non-empty if validation failed'
+    value: ${{ steps.sanitize.outputs.error_message }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Sanitize and validate inputs
+      id: sanitize
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      env:
+        INPUT_TYPE: ${{ inputs.type }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_AUTHOR: ${{ inputs.author }}
+        INPUT_URL: ${{ inputs.url }}
+        INPUT_VERSION_NUMBER: ${{ inputs.version_number }}
+        INPUT_PRODUCT_COMPATIBILITY: ${{ inputs.product_compatibility }}
+      with:
+        script: |
+          const type = process.env.INPUT_TYPE;
+          const rawTitle = process.env.INPUT_TITLE;
+          const rawAuthor = process.env.INPUT_AUTHOR;
+          const rawUrl = process.env.INPUT_URL;
+          const rawVersion = process.env.INPUT_VERSION_NUMBER;
+          const rawCompatibility = process.env.INPUT_PRODUCT_COMPATIBILITY;
+
+          // --- Sanitization functions ---
+
+          const sanitizeText = (text, maxLength) => {
+            if (!text) return '';
+            return text
+              .replace(/[<>"'`]/g, '')
+              .replace(/[\r\n\t]/g, ' ')
+              .replace(/[^\x20-\x7E]/g, '')
+              .substring(0, maxLength)
+              .trim();
+          };
+
+          // --- URL patterns per type ---
+
+          const URL_PATTERNS = {
+            'extension-submission': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/?$/,
+            'extension-update': /^https:\/\/github\.com\/[Pp]ort[Ss]wigger\/[a-zA-Z0-9_.-]{1,100}\/pull\/\d+\/?$/,
+            'bcheck': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
+            'bambda': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
+          };
+
+          // --- Type configuration ---
+
+          const TYPE_CONFIG = {
+            'extension-submission': {
+              requiredFields: ['title', 'author', 'url', 'version_number', 'product_compatibility'],
+              applicableFields: ['title', 'author', 'url', 'version_number', 'product_compatibility'],
+            },
+            'extension-update': {
+              requiredFields: ['title', 'url', 'version_number'],
+              applicableFields: ['title', 'author', 'url', 'version_number'],
+            },
+            'bcheck': {
+              requiredFields: ['title', 'author', 'url'],
+              applicableFields: ['title', 'author', 'url'],
+            },
+            'bambda': {
+              requiredFields: ['title', 'author', 'url'],
+              applicableFields: ['title', 'author', 'url'],
+            },
+          };
+
+          // --- Validate type ---
+
+          const VALID_TYPES = Object.keys(TYPE_CONFIG);
+          if (!VALID_TYPES.includes(type)) {
+            core.setOutput('error_message', `Invalid type: "${type}". Must be one of: ${VALID_TYPES.join(', ')}`);
+            return;
+          }
+
+          const config = TYPE_CONFIG[type];
+          const errors = [];
+
+          // --- Sanitize text fields ---
+
+          const title = sanitizeText(rawTitle, 200);
+          const author = config.applicableFields.includes('author') ? sanitizeText(rawAuthor, 100) : '';
+
+          // --- Validate URL ---
+
+          let url = '';
+          let urlValidated = false;
+          if (config.applicableFields.includes('url')) {
+            urlValidated = true;
+            if (rawUrl && rawUrl.length <= 500) {
+              const trimmedUrl = rawUrl.trim();
+              if (URL_PATTERNS[type].test(trimmedUrl)) {
+                url = trimmedUrl;
+              } else {
+                errors.push(`Invalid URL format for type "${type}"`);
+              }
+            } else if (rawUrl && rawUrl.length > 500) {
+              errors.push('URL exceeds maximum length of 500 characters');
+            }
+          }
+
+          // --- Validate version number ---
+
+          let versionNumber = '';
+          if (config.applicableFields.includes('version_number') && rawVersion) {
+            const trimmedVersion = rawVersion.trim();
+            if (/^[0-9a-zA-Z.-]+$/.test(trimmedVersion) && trimmedVersion.length <= 50) {
+              versionNumber = trimmedVersion;
+            } else {
+              errors.push('Invalid version format. Only alphanumeric characters, dots, and hyphens are allowed (max 50 chars)');
+            }
+          }
+
+          // --- Validate product compatibility ---
+
+          let productCompatibility = '[]';
+          if (config.applicableFields.includes('product_compatibility') && rawCompatibility) {
+            try {
+              const parsed = JSON.parse(rawCompatibility);
+              const ALLOWED_VALUES = ['Community', 'DAST', 'Burp AI'];
+              if (!Array.isArray(parsed)) {
+                errors.push('product_compatibility must be a JSON array');
+              } else if (parsed.some(v => !ALLOWED_VALUES.includes(v))) {
+                errors.push(`product_compatibility contains invalid values. Allowed: ${ALLOWED_VALUES.join(', ')}`);
+              } else {
+                productCompatibility = JSON.stringify(parsed);
+              }
+            } catch (e) {
+              errors.push('product_compatibility is not valid JSON');
+            }
+          }
+
+          // --- Check required fields ---
+
+          const fieldValues = { title, author, url, version_number: versionNumber, product_compatibility: productCompatibility };
+          const missingFields = config.requiredFields.filter(field => {
+            if (field === 'url' && urlValidated && !url) return false; // already reported as invalid format
+            const value = fieldValues[field];
+            return !value || value === '[]';
+          });
+          if (missingFields.length > 0) {
+            errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+          }
+
+          // --- Set outputs ---
+
+          if (errors.length > 0) {
+            core.setOutput('error_message', errors.join('; '));
+            core.setOutput('title', '');
+            core.setOutput('author', '');
+            core.setOutput('url', '');
+            core.setOutput('version_number', '');
+            core.setOutput('product_compatibility', '[]');
+          } else {
+            core.setOutput('error_message', '');
+            core.setOutput('title', title);
+            core.setOutput('author', author);
+            core.setOutput('url', url);
+            core.setOutput('version_number', versionNumber);
+            core.setOutput('product_compatibility', productCompatibility);
+          }
