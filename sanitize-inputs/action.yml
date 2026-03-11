@@ -158,11 +158,13 @@ runs:
           // --- Validate version number ---
 
           let versionNumber = '';
+          let versionValidationFailed = false;
           if (config.applicableFields.includes('version_number') && rawVersion) {
             const trimmedVersion = rawVersion.trim();
             if (/^[0-9a-zA-Z.-]+$/.test(trimmedVersion) && trimmedVersion.length <= 50) {
               versionNumber = trimmedVersion;
             } else {
+              versionValidationFailed = true;
               errors.push('Invalid version format. Only alphanumeric characters, dots, and hyphens are allowed.');
             }
           }
@@ -191,6 +193,7 @@ runs:
           const fieldValues = { title, author, url, version_number: versionNumber, product_compatibility: productCompatibility };
           const missingFields = config.requiredFields.filter(field => {
             if (field === 'url' && urlValidated && !url) return false; // already reported as invalid format
+            if (field === 'version_number' && versionValidationFailed) return false; // already reported as invalid format
             const value = fieldValues[field];
             return !value || value === '[]';
           });
