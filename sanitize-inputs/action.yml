@@ -204,7 +204,7 @@ runs:
           // --- Set outputs ---
 
           if (errors.length > 0) {
-            const errorMessage = errors.length === 1 ? errors[0] : errors.map(e => `- ${e}`).join('\n');
+            const errorMessage = errors.length === 1 ? errors[0] : '\n' + errors.map(e => `- ${e}`).join('\n');
             core.setOutput('error_message', errorMessage);
             core.setOutput('title', '');
             core.setOutput('author', '');
