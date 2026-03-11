@@ -82,10 +82,22 @@ runs:
           // --- URL patterns per type ---
 
           const URL_PATTERNS = {
-            'extension-submission': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/?$/,
-            'extension-update': /^https:\/\/github\.com\/[Pp]ort[Ss]wigger\/[a-zA-Z0-9_.-]{1,100}\/pull\/\d+\/?$/,
-            'bcheck': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
-            'bambda': /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
+            'extension-submission': {
+              pattern: /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/?$/,
+              message: 'Invalid extension URL format. Expected: https://github.com/owner/repo',
+            },
+            'extension-update': {
+              pattern: /^https:\/\/github\.com\/[Pp]ort[Ss]wigger\/[a-zA-Z0-9_.-]{1,100}\/pull\/\d+\/?$/,
+              message: 'Invalid pull request URL format. Expected: https://github.com/PortSwigger/repo/pull/123',
+            },
+            'bcheck': {
+              pattern: /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
+              message: 'Invalid BCheck URL format.',
+            },
+            'bambda': {
+              pattern: /^https:\/\/github\.com\/[a-zA-Z0-9][a-zA-Z0-9-]{0,37}[a-zA-Z0-9]\/[a-zA-Z0-9_.-]{1,100}\/(issues|pull)\/\d+\/?$/,
+              message: 'Invalid Bambda URL format.',
+            },
           };
 
           // --- Type configuration ---
@@ -133,10 +145,10 @@ runs:
             urlValidated = true;
             if (rawUrl && rawUrl.length <= 500) {
               const trimmedUrl = rawUrl.trim();
-              if (URL_PATTERNS[type].test(trimmedUrl)) {
+              if (URL_PATTERNS[type].pattern.test(trimmedUrl)) {
                 url = trimmedUrl;
               } else {
-                errors.push(`Invalid URL format for type "${type}"`);
+                errors.push(URL_PATTERNS[type].message);
               }
             } else if (rawUrl && rawUrl.length > 500) {
               errors.push('URL exceeds maximum length of 500 characters');
@@ -151,7 +163,7 @@ runs:
             if (/^[0-9a-zA-Z.-]+$/.test(trimmedVersion) && trimmedVersion.length <= 50) {
               versionNumber = trimmedVersion;
             } else {
-              errors.push('Invalid version format. Only alphanumeric characters, dots, and hyphens are allowed (max 50 chars)');
+              errors.push('Invalid version format. Only alphanumeric characters, dots, and hyphens are allowed.');
             }
           }
 
