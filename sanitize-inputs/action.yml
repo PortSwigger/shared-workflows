@@ -24,6 +24,10 @@ inputs:
     description: 'JSON array of product labels (extension-submission only)'
     required: false
     default: ''
+  confirmations:
+    description: 'JSON array of the confirmation keys the submitter ticked (extension-submission only)'
+    required: false
+    default: ''
 
 outputs:
   title:
@@ -58,6 +62,7 @@ runs:
         INPUT_URL: ${{ inputs.url }}
         INPUT_VERSION_NUMBER: ${{ inputs.version_number }}
         INPUT_PRODUCT_COMPATIBILITY: ${{ inputs.product_compatibility }}
+        INPUT_CONFIRMATIONS: ${{ inputs.confirmations }}
       with:
         script: |
           const type = process.env.INPUT_TYPE;
@@ -66,6 +71,7 @@ runs:
           const rawUrl = process.env.INPUT_URL;
           const rawVersion = process.env.INPUT_VERSION_NUMBER;
           const rawCompatibility = process.env.INPUT_PRODUCT_COMPATIBILITY;
+          const rawConfirmations = process.env.INPUT_CONFIRMATIONS;
 
           // --- Sanitization functions ---
 
@@ -100,12 +106,23 @@ runs:
             },
           };
 
+          // --- Confirmations ---
+
+          // Boxes the submitter ticks to record an agreement. The caller extracts
+          // them from the issue body and passes the keys it found; what each one
+          // records, and which are mandatory, is declared here.
+          const CONFIRMATION_RECORDS = {
+            'eula': "the author's permission to publish under the EULA",
+            'acceptance-criteria': "the author's agreement to the BApp Store submission requirements",
+          };
+
           // --- Type configuration ---
 
           const TYPE_CONFIG = {
             'extension-submission': {
               requiredFields: ['title', 'author', 'url', 'version_number'],
-              applicableFields: ['title', 'author', 'url', 'version_number', 'product_compatibility'],
+              applicableFields: ['title', 'author', 'url', 'version_number', 'product_compatibility', 'confirmations'],
+              requiredConfirmations: ['eula', 'acceptance-criteria'],
             },
             'extension-update': {
               requiredFields: ['title', 'url', 'version_number'],
@@ -186,6 +203,38 @@ runs:
               }
             } catch (e) {
               errors.push('product_compatibility is not valid JSON');
+            }
+          }
+
+          // --- Validate confirmations ---
+
+          if (config.applicableFields.includes('confirmations')) {
+            let ticked = [];
+            let confirmationsValidationFailed = false;
+            if (rawConfirmations) {
+              try {
+                const parsed = JSON.parse(rawConfirmations);
+                const ALLOWED_KEYS = Object.keys(CONFIRMATION_RECORDS);
+                if (!Array.isArray(parsed)) {
+                  confirmationsValidationFailed = true;
+                  errors.push('confirmations must be a JSON array');
+                } else if (parsed.some(v => !ALLOWED_KEYS.includes(v))) {
+                  confirmationsValidationFailed = true;
+                  errors.push(`confirmations contains invalid values. Allowed: ${ALLOWED_KEYS.join(', ')}`);
+                } else {
+                  ticked = parsed;
+                }
+              } catch (e) {
+                confirmationsValidationFailed = true;
+                errors.push('confirmations is not valid JSON');
+              }
+            }
+
+            const absent = (config.requiredConfirmations || []).filter(key => !ticked.includes(key));
+            if (absent.length > 0 && !confirmationsValidationFailed) {
+              errors.push(
+                `This submission did not record: ${absent.map(key => CONFIRMATION_RECORDS[key]).join('; ')}. ` +
+                'Tick every box under "I confirm that the following is true", worded exactly as the submission form writes it.');
             }
           }
 
