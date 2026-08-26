@@ -140,17 +140,18 @@ runs:
           // --- Validate URL ---
 
           let url = '';
-          let urlValidated = false;
+          let urlValidationFailed = false;
           if (config.applicableFields.includes('url')) {
-            urlValidated = true;
             if (rawUrl && rawUrl.length <= 500) {
               const trimmedUrl = rawUrl.trim();
               if (URL_PATTERNS[type].pattern.test(trimmedUrl)) {
                 url = trimmedUrl;
               } else {
+                urlValidationFailed = true;
                 errors.push(URL_PATTERNS[type].message);
               }
             } else if (rawUrl && rawUrl.length > 500) {
+              urlValidationFailed = true;
               errors.push('URL exceeds maximum length of 500 characters');
             }
           }
@@ -192,7 +193,7 @@ runs:
 
           const fieldValues = { title, author, url, version_number: versionNumber, product_compatibility: productCompatibility };
           const missingFields = config.requiredFields.filter(field => {
-            if (field === 'url' && urlValidated && !url) return false; // already reported as invalid format
+            if (field === 'url' && urlValidationFailed) return false; // already reported as invalid format
             if (field === 'version_number' && versionValidationFailed) return false; // already reported as invalid format
             const value = fieldValues[field];
             return !value || value === '[]';
