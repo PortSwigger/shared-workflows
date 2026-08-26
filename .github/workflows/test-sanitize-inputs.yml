@@ -307,6 +307,81 @@ jobs:
             exit 1
           fi
 
+  test-missing-url-extension-submission:
+    name: "extension-submission: missing url produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: ""
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+      - name: Assert error mentions missing url
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -qi "url"; then
+            echo "FAIL: error_message should mention missing url: $ERROR"
+            exit 1
+          fi
+
+  test-missing-url-extension-update:
+    name: "extension-update: missing url produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-update
+          title: "My Extension"
+          author: dev
+          url: ""
+          version_number: "1.2.3"
+      - name: Assert error mentions missing url
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -qi "url"; then
+            echo "FAIL: error_message should mention missing url: $ERROR"
+            exit 1
+          fi
+
+  test-invalid-url-not-also-reported-missing:
+    name: "extension-submission: invalid url is not also reported as missing"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/owner/repo/issues/1"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+      - name: Assert the format error is reported once, not twice
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -qi "Invalid extension URL format"; then
+            echo "FAIL: error_message should report the invalid URL format: $ERROR"
+            exit 1
+          fi
+          if echo "$ERROR" | grep -qi "Missing required fields"; then
+            echo "FAIL: an invalid url must not also be reported as missing: $ERROR"
+            exit 1
+          fi
+
   test-invalid-version:
     name: "extension-submission: invalid version format"
     runs-on: ubuntu-latest
