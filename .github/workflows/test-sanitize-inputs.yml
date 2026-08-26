@@ -91,6 +91,7 @@ jobs:
           url: "https://github.com/ExtensionDev/my-cool-extension"
           version_number: "1.2.3"
           product_compatibility: '["Community","DAST"]'
+          confirmations: '["eula","acceptance-criteria"]'
       - name: Assert outputs
         env:
           TITLE: ${{ steps.sanitize.outputs.title }}
@@ -369,6 +370,7 @@ jobs:
           url: "https://github.com/owner/repo/issues/1"
           version_number: "1.0.0"
           product_compatibility: '["Community"]'
+          confirmations: '["eula","acceptance-criteria"]'
       - name: Assert the format error is reported once, not twice
         env:
           ERROR: ${{ steps.sanitize.outputs.error_message }}
@@ -381,6 +383,134 @@ jobs:
             echo "FAIL: an invalid url must not also be reported as missing: $ERROR"
             exit 1
           fi
+
+  test-confirmations-complete:
+    name: "extension-submission: both confirmations accepted"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+          confirmations: '["eula","acceptance-criteria"]'
+      - name: Assert no error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" = ""
+
+  test-confirmations-partial:
+    name: "extension-submission: one missing confirmation produces error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+          confirmations: '["eula"]'
+      - name: Assert error names only the confirmation that is absent
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -q "submission requirements"; then
+            echo "FAIL: error should name the absent confirmation: $ERROR"
+            exit 1
+          fi
+          if echo "$ERROR" | grep -q "EULA"; then
+            echo "FAIL: error should not name a confirmation that was ticked: $ERROR"
+            exit 1
+          fi
+
+  test-confirmations-absent:
+    name: "extension-submission: absent confirmations produce error"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+      - name: Assert error names both confirmations
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -q "EULA"; then
+            echo "FAIL: error should name the EULA confirmation: $ERROR"
+            exit 1
+          fi
+          if ! echo "$ERROR" | grep -q "submission requirements"; then
+            echo "FAIL: error should name the requirements confirmation: $ERROR"
+            exit 1
+          fi
+
+  test-confirmations-invalid-value:
+    name: "extension-submission: unknown confirmation key is not also reported as absent"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-submission
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/dev/my-extension"
+          version_number: "1.0.0"
+          product_compatibility: '["Community"]'
+          confirmations: '["eula","something-else"]'
+      - name: Assert the malformed value is reported once
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          if ! echo "$ERROR" | grep -q "confirmations contains invalid values"; then
+            echo "FAIL: error should reject the unknown key: $ERROR"
+            exit 1
+          fi
+          if echo "$ERROR" | grep -q "did not record"; then
+            echo "FAIL: a malformed value must not also be reported as absent: $ERROR"
+            exit 1
+          fi
+
+  test-confirmations-not-applicable:
+    name: "extension-update: confirmations are not required"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Run sanitizer
+        id: sanitize
+        uses: ./sanitize-inputs
+        with:
+          type: extension-update
+          title: "My Extension"
+          author: dev
+          url: "https://github.com/PortSwigger/my-extension/pull/5"
+          version_number: "1.2.3"
+      - name: Assert no error
+        env:
+          ERROR: ${{ steps.sanitize.outputs.error_message }}
+        run: |
+          test "$ERROR" = ""
 
   test-invalid-version:
     name: "extension-submission: invalid version format"
@@ -456,6 +586,7 @@ jobs:
           url: "https://github.com/dev/my-extension/"
           version_number: "1.0.0"
           product_compatibility: '["Community"]'
+          confirmations: '["eula","acceptance-criteria"]'
       - name: Assert accepted
         env:
           URL: ${{ steps.sanitize.outputs.url }}
